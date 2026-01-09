@@ -165,15 +165,41 @@ def pack_minor_controller_image(raw_bin, source_dir, version):
     date = datetime.datetime.today().strftime('%Y%m%d')
 
     if version == None and source_dir != None:
-        with open(join(source_dir, 'Marlin', 'src', 'inc','Version.h'), 'r', encoding='utf-8') as version_file:
-            lines = version_file.readlines()
+        header_paths = [
+            join(source_dir, 'Marlin', 'src', 'inc', '_Version.h'),
+            join(source_dir, 'Marlin', 'src', 'inc', 'Version.h'),
+        ]
 
-        pattern = r"SM2-\d+\.\d+\.\S+\n"
-        for line in lines:
-            match_obj = re.search(pattern, line, re.I)
-            if match_obj:
-                version = 'V' + match_obj[0][4:-2]
-                break
+        header_text = ""
+        for header_path in header_paths:
+            if os.path.exists(header_path):
+                try:
+                    with open(header_path, 'r', encoding='utf-8') as version_file:
+                        header_text += version_file.read() + "\n"
+                except OSError:
+                    pass
+
+        # Preferred (Snapmaker-specific) pattern
+        m = re.search(r"SM2-(\d+\.\d+\.\S+)", header_text, re.I)
+        if m:
+            version = 'V' + m.group(1)
+        else:
+            # Fallbacks: try to extract from SHORT_BUILD_VERSION or any Vx.y.z token
+            m = re.search(r"SHORT_BUILD_VERSION\s+\"([^\"]+)\"", header_text)
+            candidate = m.group(1) if m else None
+
+            if candidate:
+                m2 = re.search(r"V\d+\.\d+\.\d+", candidate, re.I)
+                if m2:
+                    version = m2.group(0).upper()
+                else:
+                    m3 = re.search(r"(\d+\.\d+\.\d+)", candidate)
+                    if m3:
+                        version = 'V' + m3.group(1)
+            if version is None:
+                m4 = re.search(r"V(\d+\.\d+\.\d+)", header_text, re.I)
+                if m4:
+                    version = 'V' + m4.group(1)
 
     print("controller version: {}".format(version))
     if version == None:
