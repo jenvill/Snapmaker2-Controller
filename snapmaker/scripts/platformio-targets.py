@@ -27,11 +27,20 @@ pack_script = join(project_dir, 'snapmaker', 'scripts', 'pack.py')
 fw_bin = join(projenv.get("PROJECT_BUILD_DIR"), projenv.get("PIOENV"), projenv.get("PROGNAME") + '.bin')
 
 
+def _quote(path: str) -> str:
+    return '"{0}"'.format(path)
+
+
 env.AddCustomTarget(
     name="pack",
     dependencies=None,
     actions=[
-    "python {0} -d {1} -c {2} ".format(pack_script, project_dir, fw_bin),
+    "{py} {script} -d {project} -c {bin} ".format(
+        py=_quote(sys.executable),
+        script=_quote(pack_script),
+        project=_quote(project_dir),
+        bin=_quote(fw_bin),
+    ),
     ],
     title="Pack",
     description="Pack Snapmaker Firmware"
